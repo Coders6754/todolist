@@ -5,45 +5,64 @@ import { mockTodoCollection } from './mock-mongodb.config';
 
 dotenv.config();
 
-// If the MongoDB URI is not available or fails, use a local MongoDB instance
+// MongoDB configuration
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = process.env.MONGODB_DB || 'assignment';
 const collectionName = process.env.MONGODB_COLLECTION || 'assignment_';
 
-const client = new MongoClient(uri);
+// MongoDB connection options
+const options = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+};
+
+const client = new MongoClient(uri, options);
 
 export let todoCollection: Collection<MongoTodoItem>;
 
 export const connectMongoDB = async () => {
   try {
-    await client.connect();
-    console.log('Connected to MongoDB');
-    
+    // Try to connect to MongoDB Atlas first
+    if (process.env.MONGODB_URI && process.env.MONGODB_URI.includes('mongodb+srv://')) {
+      console.log('Attempting to connect to MongoDB Atlas...');
+      await client.connect();
+      console.log('Connected to MongoDB Atlas');
+    } else {
+      // Try local MongoDB
+      console.log('Attempting to connect to local MongoDB...');
+      await client.connect();
+      console.log('Connected to local MongoDB');
+    }
+
     const db = client.db(dbName);
     todoCollection = db.collection<MongoTodoItem>(collectionName);
+
+    // Verify connection by performing a simple operation
+    await todoCollection.findOne({});
+    console.log('MongoDB connection verified');
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
-    // Try connecting to local MongoDB if the original connection fails
-    if (process.env.MONGODB_URI && process.env.MONGODB_URI !== 'mongodb://localhost:27017') {
-      console.log('Trying to connect to local MongoDB instance as fallback...');
-      const localClient = new MongoClient('mongodb://localhost:27017');
-      try {
-        await localClient.connect();
-        console.log('Connected to local MongoDB');
-        const db = localClient.db(dbName);
-        todoCollection = db.collection<MongoTodoItem>(collectionName);
-      } catch (localError) {
-        console.error('Failed to connect to local MongoDB:', localError);
-        console.log('Using in-memory mock MongoDB implementation');
-        // Type cast to Collection type for MongoDB compatibility
-        todoCollection = mockTodoCollection as unknown as Collection<MongoTodoItem>;
-      }
-    } else {
-      console.log('Using in-memory mock MongoDB implementation');
-      // Type cast to Collection type for MongoDB compatibility
+
+    // If we're not already using the mock, try to use it
+    if (todoCollection !== mockTodoCollection) {
+      console.log('Falling back to in-memory mock MongoDB implementation');
       todoCollection = mockTodoCollection as unknown as Collection<MongoTodoItem>;
     }
   }
 };
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  try {
+    await client.close();
+    console.log('MongoDB connection closed');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error closing MongoDB connection:', error);
+    process.exit(1);
+  }
+});
 
 export default client;
