@@ -6,7 +6,6 @@ import { mockTodoCollection } from './mock-mongodb.config';
 dotenv.config();
 
 // MongoDB configuration
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const dbName = process.env.MONGODB_DB || 'assignment';
 const collectionName = process.env.MONGODB_COLLECTION || 'assignment_';
 
@@ -16,16 +15,14 @@ const options: MongoClientOptions = {
   tls: true,
   tlsAllowInvalidCertificates: false,
   tlsAllowInvalidHostnames: false,
-  retryWrites: true,
-  w: 'majority' as const,
   serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
   connectTimeoutMS: 10000,
   maxPoolSize: 10,
   minPoolSize: 1,
+  directConnection: false,
+  replicaSet: 'atlas-9mpbwv-shard-0',
 };
-
-const client = new MongoClient(uri, options);
 
 export let todoCollection: Collection<MongoTodoItem>;
 
@@ -34,12 +31,20 @@ export const connectMongoDB = async () => {
     // Try to connect to MongoDB Atlas first
     if (process.env.MONGODB_URI && process.env.MONGODB_URI.includes('mongodb+srv://')) {
       console.log('Attempting to connect to MongoDB Atlas...');
-      console.log('Using URI:', process.env.MONGODB_URI.replace(/\/\/[^@]+@/, '//****:****@'));
       
-      await client.connect();
+      // Construct the full URI with database name and options
+      const baseUri = process.env.MONGODB_URI.endsWith('/') 
+        ? process.env.MONGODB_URI.slice(0, -1)
+        : process.env.MONGODB_URI;
+      
+      const fullUri = `${baseUri}/${dbName}?retryWrites=true&w=majority`;
+      console.log('Using URI:', fullUri.replace(/\/\/[^@]+@/, '//****:****@'));
+      
+      const atlasClient = new MongoClient(fullUri, options);
+      await atlasClient.connect();
       console.log('Connected to MongoDB Atlas');
       
-      const db = client.db(dbName);
+      const db = atlasClient.db(dbName);
       todoCollection = db.collection<MongoTodoItem>(collectionName);
       
       // Verify connection by performing a simple operation
@@ -59,13 +64,14 @@ export const connectMongoDB = async () => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   try {
-    await client.close();
-    console.log('MongoDB connection closed');
+    if (todoCollection !== mockTodoCollection) {
+      const client = (todoCollection as any).s.db.client;
+      await client.close();
+      console.log('MongoDB connection closed');
+    }
     process.exit(0);
   } catch (error) {
     console.error('Error closing MongoDB connection:', error);
     process.exit(1);
   }
 });
-
-export default client;
