@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
+// Create axios instance with base URL
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001'
+});
+
 function App() {
   const [tasks, setTasks] = useState([]);
   const [taskText, setTaskText] = useState('');
@@ -13,7 +18,7 @@ function App() {
     setError(null);
     
     try {
-      const response = await axios.get('http://localhost:3001/api/fetchAllTasks');
+      const response = await api.get('/api/fetchAllTasks');
       setTasks(response.data);
     } catch (err) {
       console.error('Error fetching tasks:', err);
@@ -29,7 +34,7 @@ function App() {
     if (!taskText.trim()) return;
     
     try {
-      await axios.post('http://localhost:3001/api/simulate-mqtt', { message: taskText });
+      await api.post('/api/simulate-mqtt', { message: taskText });
       setTaskText('');
       fetchTasks();
     } catch (error) {
