@@ -1,4 +1,4 @@
-import { MongoClient, Collection } from 'mongodb';
+import { MongoClient, Collection, MongoClientOptions } from 'mongodb';
 import dotenv from 'dotenv';
 import { MongoTodoItem } from '../models/types';
 import { mockTodoCollection } from './mock-mongodb.config';
@@ -11,9 +11,13 @@ const dbName = process.env.MONGODB_DB || 'assignment';
 const collectionName = process.env.MONGODB_COLLECTION || 'assignment_';
 
 // MongoDB connection options
-const options = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+const options: MongoClientOptions = {
+  ssl: true,
+  tls: true,
+  tlsAllowInvalidCertificates: true,
+  tlsAllowInvalidHostnames: true,
+  retryWrites: true,
+  w: 'majority' as const,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
 };
