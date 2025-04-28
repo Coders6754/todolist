@@ -6,9 +6,8 @@ import { connectMqtt } from './config/mqtt.config';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3001;
-
-const startServer = async () => {
+// Initialize connections
+const initializeConnections = async () => {
   try {
     // Connect to Redis
     try {
@@ -19,7 +18,7 @@ const startServer = async () => {
 
     // Connect to MongoDB - will use fallbacks if needed
     try {
-      await connectMongoDB(); 
+      await connectMongoDB();
     } catch (mongoError) {
       console.error('Warning: All MongoDB connection attempts failed, using limited functionality:', mongoError);
     }
@@ -30,15 +29,13 @@ const startServer = async () => {
     } catch (mqttError) {
       console.error('Warning: MQTT connection failed, message processing will not work:', mqttError);
     }
-
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
   } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+    console.error('Failed to initialize connections:', error);
   }
 };
 
-startServer();
+// Initialize connections when the serverless function starts
+initializeConnections();
+
+// Export the Express app for Vercel
+export default app;
