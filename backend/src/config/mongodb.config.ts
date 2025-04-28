@@ -14,12 +14,15 @@ const collectionName = process.env.MONGODB_COLLECTION || 'assignment_';
 const options: MongoClientOptions = {
   ssl: true,
   tls: true,
-  tlsAllowInvalidCertificates: true,
-  tlsAllowInvalidHostnames: true,
+  tlsAllowInvalidCertificates: false,
+  tlsAllowInvalidHostnames: false,
   retryWrites: true,
   w: 'majority' as const,
-  serverSelectionTimeoutMS: 5000,
+  serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  maxPoolSize: 10,
+  minPoolSize: 1,
 };
 
 const client = new MongoClient(uri, options);
@@ -31,29 +34,25 @@ export const connectMongoDB = async () => {
     // Try to connect to MongoDB Atlas first
     if (process.env.MONGODB_URI && process.env.MONGODB_URI.includes('mongodb+srv://')) {
       console.log('Attempting to connect to MongoDB Atlas...');
+      console.log('Using URI:', process.env.MONGODB_URI.replace(/\/\/[^@]+@/, '//****:****@'));
+      
       await client.connect();
       console.log('Connected to MongoDB Atlas');
+      
+      const db = client.db(dbName);
+      todoCollection = db.collection<MongoTodoItem>(collectionName);
+      
+      // Verify connection by performing a simple operation
+      await todoCollection.findOne({});
+      console.log('MongoDB connection verified');
     } else {
-      // Try local MongoDB
-      console.log('Attempting to connect to local MongoDB...');
-      await client.connect();
-      console.log('Connected to local MongoDB');
-    }
-
-    const db = client.db(dbName);
-    todoCollection = db.collection<MongoTodoItem>(collectionName);
-
-    // Verify connection by performing a simple operation
-    await todoCollection.findOne({});
-    console.log('MongoDB connection verified');
-  } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
-
-    // If we're not already using the mock, try to use it
-    if (todoCollection !== mockTodoCollection) {
-      console.log('Falling back to in-memory mock MongoDB implementation');
+      console.log('No MongoDB Atlas URI provided, using in-memory mock');
       todoCollection = mockTodoCollection as unknown as Collection<MongoTodoItem>;
     }
+  } catch (error) {
+    console.error('Error connecting to MongoDB:', error);
+    console.log('Falling back to in-memory mock MongoDB implementation');
+    todoCollection = mockTodoCollection as unknown as Collection<MongoTodoItem>;
   }
 };
 
