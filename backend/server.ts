@@ -6,6 +6,8 @@ import { connectMqtt } from './config/mqtt.config';
 
 dotenv.config();
 
+const PORT = process.env.PORT || 3001;
+
 // Initialize connections
 const initializeConnections = async () => {
   try {
@@ -34,8 +36,15 @@ const initializeConnections = async () => {
   }
 };
 
-// Initialize connections when the serverless function starts
+// Initialize connections when the server starts
 initializeConnections();
+
+// Start the server
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
 
 // Export the Express app for Vercel
 export default app;

@@ -1,14 +1,23 @@
-import mqtt from 'mqtt';
+import mqtt, { IClientOptions } from 'mqtt';
 import dotenv from 'dotenv';
 import { processMqttMessage } from '../services/todo.service';
 
 dotenv.config();
 
-const mqttBroker = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
+const mqttConfig: IClientOptions = {
+  host: process.env.MQTT_BROKER_URL || 'localhost',
+  port: parseInt(process.env.MQTT_PORT || '8883'),
+  protocol: 'mqtts' as const,
+  rejectUnauthorized: false
+};
+
 const addTopic = process.env.MQTT_TOPIC_ADD || '/add';
 
 export const connectMqtt = () => {
-  const client = mqtt.connect(mqttBroker);
+  const client = mqtt.connect({
+    ...mqttConfig,
+    clientId: `mqtt_${Math.random().toString(16).slice(2, 10)}`,
+  });
 
   client.on('connect', () => {
     console.log('Connected to MQTT broker');
