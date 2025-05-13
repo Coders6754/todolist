@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "nodemon --exec ts-node server.ts",
-    "build": "tsc",
-    "vercel-build": "npm run build",
+    "build": "node build.js",
+    "vercel-build": "node build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -23,6 +23,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "fs-extra": "^11.3.0",
     "mongodb": "^6.16.0",
     "mongoose": "^8.13.3",
     "mqtt": "^5.11.1",
@@ -32,6 +33,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@vercel/node": "^3.0.0",
     "nodemon": "^3.1.10"
   }
